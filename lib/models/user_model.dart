@@ -13,6 +13,7 @@ class UserModel {
   final String location;
   final String? photoURL;
   final bool onboardingCompleted;
+  final bool isAdmin;
   final DateTime createdAt;
   final List<String> selectedGoals;      // Objetivos del onboarding
   final List<String> selectedCategories; // Categorías del onboarding
@@ -25,6 +26,7 @@ class UserModel {
     required this.location,
     this.photoURL,
     required this.onboardingCompleted,
+    this.isAdmin = false,
     required this.createdAt,
     this.selectedGoals = const [],
     this.selectedCategories = const [],
@@ -42,6 +44,7 @@ class UserModel {
       location: map['location'] ?? '',
       photoURL: map['photoURL'],
       onboardingCompleted: map['onboardingCompleted'] ?? false,
+      isAdmin: map['isAdmin'] ?? false,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       selectedGoals: List<String>.from(map['selectedGoals'] ?? []),
       selectedCategories: List<String>.from(map['selectedCategories'] ?? []),
@@ -59,6 +62,7 @@ class UserModel {
       'location': location,
       'photoURL': photoURL,
       'onboardingCompleted': onboardingCompleted,
+      'isAdmin': isAdmin,
       'createdAt': Timestamp.fromDate(createdAt),
       'selectedGoals': selectedGoals,
       'selectedCategories': selectedCategories,
@@ -74,6 +78,7 @@ class UserModel {
     String? location,
     String? photoURL,
     bool? onboardingCompleted,
+    bool? isAdmin,
     List<String>? selectedGoals,
     List<String>? selectedCategories,
   }) {
@@ -85,6 +90,7 @@ class UserModel {
       location: location ?? this.location,
       photoURL: photoURL ?? this.photoURL,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+      isAdmin: isAdmin ?? this.isAdmin,
       createdAt: createdAt,
       selectedGoals: selectedGoals ?? this.selectedGoals,
       selectedCategories: selectedCategories ?? this.selectedCategories,

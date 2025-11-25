@@ -3,6 +3,7 @@
  * Permite a los usuarios iniciar sesión o ir al registro
  */
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
@@ -48,10 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (error != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
       );
     }
   }
@@ -73,9 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            error ?? 'Se ha enviado un correo de recuperación',
-          ),
+          content: Text(error ?? 'Se ha enviado un correo de recuperación'),
           backgroundColor: error == null ? Colors.green : Colors.red,
         ),
       );
@@ -90,10 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.purple.shade100,
-              Colors.blue.shade100,
-            ],
+            colors: [Colors.purple.shade100, Colors.blue.shade100],
           ),
         ),
         child: SafeArea(
@@ -104,11 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo o título
-                  const Icon(
-                    Icons.wb_sunny,
-                    size: 80,
-                    color: Colors.purple,
-                  ),
+                  const Icon(Icons.wb_sunny, size: 80, color: Colors.purple),
                   const SizedBox(height: 24),
                   const Text(
                     'DailyMind',
@@ -121,10 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     'Tu compañero de bienestar',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.black54,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.black54),
                   ),
                   const SizedBox(height: 48),
 
@@ -198,6 +184,22 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: const Text('¿Olvidaste tu contraseña?'),
                               ),
                             ),
+
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: () => _showAdminLogin(context),
+                              icon: const Icon(
+                                Icons.admin_panel_settings,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Acceso Administrador',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
+                            ),
                             const SizedBox(height: 24),
                             SizedBox(
                               width: double.infinity,
@@ -206,7 +208,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.purple,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -262,4 +266,134 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+
+  void _showAdminLogin(BuildContext context) {
+  final adminEmailController = TextEditingController();
+  final adminPasswordController = TextEditingController();
+  bool isLoading = false;
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.admin_panel_settings, color: Colors.red.shade700),
+                const SizedBox(width: 8),
+                const Text('Acceso Administrador'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: adminEmailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email Admin',
+                    prefixIcon: Icon(Icons.email),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: adminPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Contraseña Admin',
+                    prefixIcon: Icon(Icons.lock),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          isLoading = true;
+                        });
+
+                        final authService = Provider.of<AuthService>(
+                          context,
+                          listen: false,
+                        );
+
+                        final error = await authService.login(
+                          adminEmailController.text.trim(),
+                          adminPasswordController.text,
+                        );
+
+                        if (error == null && context.mounted) {
+                          // Verificar si es admin
+                          final userId = authService.currentUser?.uid;
+                          if (userId != null) {
+                            final userDoc = await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(userId)
+                                .get();
+
+                            final isAdmin = userDoc.data()?['isAdmin'] ?? false;
+
+                            if (isAdmin) {
+                              Navigator.pop(dialogContext);
+                              // El AuthWrapper redirigirá automáticamente
+                            } else {
+                              await authService.logout();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Este usuario no tiene permisos de administrador',
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                              Navigator.pop(dialogContext);
+                            }
+                          }
+                        } else if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(error ?? 'Error al iniciar sesión'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          Navigator.pop(dialogContext);
+                        }
+
+                        setDialogState(() {
+                          isLoading = false;
+                        });
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade700,
+                  foregroundColor: Colors.white,
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('Entrar'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
 }

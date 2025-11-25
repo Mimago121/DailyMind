@@ -14,6 +14,7 @@ import '../services/analytics_service.dart';
 import '../models/habit_model.dart';
 import '../models/mood_model.dart';
 import '../utils/demo_data.dart';
+import '../screens/admin_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -350,6 +351,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
 
                       const SizedBox(height: 24),
+
+                      // Botón de admin (solo visible para administradores)
+                      FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(userId)
+                            .get(),
+                        builder: (context, adminSnapshot) {
+                          if (adminSnapshot.hasData) {
+                            final isAdmin =
+                                (adminSnapshot.data!.data()
+                                    as Map<String, dynamic>?)?['isAdmin'] ??
+                                false;
+
+                            if (isAdmin) {
+                              return Column(
+                                children: [
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const AdminScreen(),
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(
+                                        Icons.admin_panel_settings,
+                                      ),
+                                      label: const Text(
+                                        'Panel de Administración',
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red.shade700,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+                              );
+                            }
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
 
                       // Botón de cerrar sesión
                       SizedBox(
