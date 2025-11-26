@@ -53,11 +53,28 @@ class _AdminScreenState extends State<AdminScreen> {
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ExpansionTile(
-                  leading: CircleAvatar(
-                    backgroundColor: isAdmin ? Colors.red : Colors.purple,
-                    child: Text(
-                      name[0].toUpperCase(),
-                      style: const TextStyle(color: Colors.white),
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          isAdmin ? Colors.red : _getColorFromName(name),
+                          isAdmin
+                              ? Colors.red.shade900
+                              : _getColorFromName(name).withOpacity(0.7),
+                        ],
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        name[0].toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                   title: Row(
@@ -117,8 +134,6 @@ class _AdminScreenState extends State<AdminScreen> {
                                 : 'Desconocido',
                           ),
                           const SizedBox(height: 16),
-
-                          // Estadísticas del usuario
                           FutureBuilder<Map<String, int>>(
                             future: _getUserStats(userId),
                             builder: (context, statsSnapshot) {
@@ -130,8 +145,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
                               final stats = statsSnapshot.data!;
                               return Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
                                 children: [
                                   _StatChip(
                                     icon: Icons.check_circle,
@@ -155,26 +169,23 @@ class _AdminScreenState extends State<AdminScreen> {
                               );
                             },
                           ),
-
                           const SizedBox(height: 16),
-
-                          // Acciones
                           Row(
                             children: [
                               Expanded(
                                 child: OutlinedButton.icon(
-                                  onPressed: () =>
-                                      _toggleAdmin(userId, isAdmin),
+                                  onPressed: () => _toggleAdmin(userId, isAdmin),
                                   icon: Icon(
-                                    isAdmin ? Icons.remove_moderator : Icons.admin_panel_settings,
+                                    isAdmin
+                                        ? Icons.remove_moderator
+                                        : Icons.admin_panel_settings,
                                   ),
                                   label: Text(
                                     isAdmin ? 'Quitar Admin' : 'Hacer Admin',
                                   ),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: isAdmin
-                                        ? Colors.orange
-                                        : Colors.red,
+                                    foregroundColor:
+                                        isAdmin ? Colors.orange : Colors.red,
                                   ),
                                 ),
                               ),
@@ -231,12 +242,31 @@ class _AdminScreenState extends State<AdminScreen> {
     };
   }
 
+  Color _getColorFromName(String str) {
+    int hash = 0;
+    for (int i = 0; i < str.length; i++) {
+      hash = str.codeUnitAt(i) + ((hash << 5) - hash);
+    }
+    final colors = [
+      Colors.purple,
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.pink,
+      Colors.teal,
+      Colors.indigo,
+    ];
+    return colors[hash.abs() % colors.length];
+  }
+
   Future<void> _toggleAdmin(String userId, bool currentIsAdmin) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          currentIsAdmin ? '¿Quitar permisos de admin?' : '¿Hacer administrador?',
+          currentIsAdmin
+              ? '¿Quitar permisos de admin?'
+              : '¿Hacer administrador?',
         ),
         content: Text(
           currentIsAdmin
@@ -324,7 +354,6 @@ class _AdminScreenState extends State<AdminScreen> {
 
     if (confirm == true) {
       try {
-        // Eliminar subcolecciones
         final batch = _firestore.batch();
 
         final habits = await _firestore
@@ -355,8 +384,6 @@ class _AdminScreenState extends State<AdminScreen> {
         }
 
         await batch.commit();
-
-        // Eliminar documento del usuario
         await _firestore.collection('users').doc(userId).delete();
 
         if (mounted) {
@@ -403,10 +430,7 @@ class _InfoRow extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         ),
         Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontSize: 14),
-          ),
+          child: Text(value, style: const TextStyle(fontSize: 14)),
         ),
       ],
     );
@@ -440,10 +464,7 @@ class _StatChip extends StatelessWidget {
             color: color,
           ),
         ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }

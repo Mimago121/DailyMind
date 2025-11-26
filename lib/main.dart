@@ -6,6 +6,7 @@
  * Fecha: Noviembre 2025
  */
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -85,28 +86,35 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    
-    // Mostrar loading mientras se verifica la autenticación
-    if (authService.isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-    
-    // Si no hay usuario, mostrar login
-    if (authService.currentUser == null) {
-      return const LoginScreen();
-    }
-    
-    // Si el usuario no ha completado onboarding, mostrarlo
-    if (!authService.hasCompletedOnboarding) {
-      return const OnboardingScreen();
-    }
-    
-    // Usuario autenticado y con onboarding completado
-    return const HomeScreen();
+    final authService = Provider.of<AuthService>(context, listen: false);
+
+    return StreamBuilder(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        final user = snapshot.data;
+
+        // Mientras Firebase determina el estado
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // Si NO hay usuario → login inmediato
+        if (user == null) {
+          return const LoginScreen();
+        }
+
+        // Si existe usuario, comprobamos onboarding del provider
+        final hasCompletedOnboarding =
+            context.watch<AuthService>().hasCompletedOnboarding;
+
+        if (!hasCompletedOnboarding) {
+          return const OnboardingScreen();
+        }
+
+        return const HomeScreen();
+      },
+    );
   }
 }

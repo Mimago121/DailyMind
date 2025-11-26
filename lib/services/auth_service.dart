@@ -10,39 +10,51 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+
   User? _currentUser;
   bool _isLoading = true;
   bool _hasCompletedOnboarding = false;
-  
+
   // Getters
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   bool get hasCompletedOnboarding => _hasCompletedOnboarding;
-  
+
   AuthService() {
     // Escuchar cambios en el estado de autenticación
     _auth.authStateChanges().listen(_onAuthStateChanged);
   }
-  
+
   /**
-   * Callback que se ejecuta cuando cambia el estado de autenticación
-   */
+ * Callback que se ejecuta cuando cambia el estado de autenticación
+ */
   Future<void> _onAuthStateChanged(User? user) async {
     _currentUser = user;
-    
+
     if (user != null) {
-      // Verificar si completó el onboarding
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      _hasCompletedOnboarding = userDoc.data()?['onboardingCompleted'] ?? false;
+      try {
+        final userDoc = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (userDoc.exists) {
+          _hasCompletedOnboarding =
+              userDoc.data()?['onboardingCompleted'] ?? false;
+        } else {
+          _hasCompletedOnboarding = false;
+        }
+      } catch (e) {
+        print('Error loading user data: $e');
+        _hasCompletedOnboarding = false;
+      }
     } else {
       _hasCompletedOnboarding = false;
     }
-    
+
     _isLoading = false;
     notifyListeners();
   }
-  
+
   /**
    * Registrar un nuevo usuario
    * @param email Email del usuario
@@ -65,10 +77,10 @@ class AuthService extends ChangeNotifier {
         email: email,
         password: password,
       );
-      
+
       // Actualizar el nombre de usuario
       await userCredential.user?.updateDisplayName(name);
-      
+
       // Crear documento en Firestore
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'name': name,
@@ -79,7 +91,7 @@ class AuthService extends ChangeNotifier {
         'onboardingCompleted': false,
         'photoURL': null,
       });
-      
+
       return null; // Sin errores
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {
@@ -92,7 +104,7 @@ class AuthService extends ChangeNotifier {
       return 'Error inesperado: $e';
     }
   }
-  
+
   /**
    * Iniciar sesión
    * @param email Email del usuario
@@ -101,10 +113,7 @@ class AuthService extends ChangeNotifier {
    */
   Future<String?> login(String email, String password) async {
     try {
-      await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
       return null;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
@@ -117,14 +126,18 @@ class AuthService extends ChangeNotifier {
       return 'Error inesperado: $e';
     }
   }
-  
+
   /**
-   * Cerrar sesión
-   */
-  Future<void> logout() async {
+ * Cerrar sesión
+ */
+Future<void> logout() async {
+  try {
     await _auth.signOut();
+  } catch (e) {
+    print('Error during logout: $e');
   }
-  
+}
+
   /**
    * Marcar onboarding como completado
    */
@@ -137,7 +150,7 @@ class AuthService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /**
    * Recuperar contraseña
    */

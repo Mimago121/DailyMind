@@ -12,11 +12,12 @@ class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
   // ============ HÁBITOS ============
-  
+
   /**
    * Crear un nuevo hábito
    */
   Future<void> createHabit(String userId, Habit habit) async {
+    if (userId.isEmpty) return; // <- evitar crash
     await _firestore
         .collection('users')
         .doc(userId)
@@ -24,11 +25,15 @@ class FirestoreService {
         .doc(habit.id)
         .set(habit.toMap());
   }
-  
+
   /**
    * Obtener todos los hábitos del usuario
    */
   Stream<List<Habit>> getHabits(String userId) {
+    if (userId.isEmpty) {
+      return const Stream.empty(); // <- evitar crash
+    }
+
     return _firestore
         .collection('users')
         .doc(userId)
@@ -39,11 +44,12 @@ class FirestoreService {
       return snapshot.docs.map((doc) => Habit.fromMap(doc.data())).toList();
     });
   }
-  
+
   /**
    * Actualizar un hábito
    */
   Future<void> updateHabit(String userId, Habit habit) async {
+    if (userId.isEmpty) return;
     await _firestore
         .collection('users')
         .doc(userId)
@@ -51,11 +57,12 @@ class FirestoreService {
         .doc(habit.id)
         .update(habit.toMap());
   }
-  
+
   /**
    * Eliminar un hábito
    */
   Future<void> deleteHabit(String userId, String habitId) async {
+    if (userId.isEmpty) return;
     await _firestore
         .collection('users')
         .doc(userId)
@@ -63,7 +70,7 @@ class FirestoreService {
         .doc(habitId)
         .delete();
   }
-  
+
   /**
    * Marcar hábito como completado/no completado en una fecha específica
    */
@@ -72,35 +79,32 @@ class FirestoreService {
     String habitId,
     DateTime date,
   ) async {
+    if (userId.isEmpty) return;
+
     final habitRef = _firestore
         .collection('users')
         .doc(userId)
         .collection('habits')
         .doc(habitId);
-    
+
     final habitDoc = await habitRef.get();
+    if (!habitDoc.exists) return;
+
     final habit = Habit.fromMap(habitDoc.data()!);
-    
     final dateKey = _getDateKey(date);
-    
-    // Crear una nueva lista de fechas completadas
+
     final updatedCompletedDates = List<String>.from(habit.completedDates);
-    
+
     if (updatedCompletedDates.contains(dateKey)) {
-      // Si ya está completado, quitarlo
       updatedCompletedDates.remove(dateKey);
     } else {
-      // Si no está completado, agregarlo
       updatedCompletedDates.add(dateKey);
     }
-    
-    // Recalcular la racha actual
+
     final newCurrentStreak = _calculateStreak(updatedCompletedDates);
-    final newLongestStreak = newCurrentStreak > habit.longestStreak 
-        ? newCurrentStreak 
-        : habit.longestStreak;
-    
-    // Crear un nuevo hábito con los valores actualizados
+    final newLongestStreak =
+        newCurrentStreak > habit.longestStreak ? newCurrentStreak : habit.longestStreak;
+
     final updatedHabit = Habit(
       id: habit.id,
       name: habit.name,
@@ -112,40 +116,35 @@ class FirestoreService {
       longestStreak: newLongestStreak,
       createdAt: habit.createdAt,
     );
-    
+
     await habitRef.update(updatedHabit.toMap());
   }
-  
-  /**
-   * Calcular la racha actual de un hábito
-   */
+
   int _calculateStreak(List<String> completedDates) {
     if (completedDates.isEmpty) return 0;
-    
+
     final sortedDates = completedDates.map((d) => DateTime.parse(d)).toList()
       ..sort((a, b) => b.compareTo(a));
-    
+
     int streak = 0;
     DateTime currentDate = DateTime.now();
-    
+
     for (var date in sortedDates) {
-      if (_isSameDay(date, currentDate) || 
+      if (_isSameDay(date, currentDate) ||
           _isSameDay(date, currentDate.subtract(Duration(days: streak)))) {
         streak++;
       } else {
         break;
       }
     }
-    
+
     return streak;
   }
-  
+
   // ============ MOOD (Estado de ánimo) ============
-  
-  /**
-   * Guardar el mood del día
-   */
+
   Future<void> saveMood(String userId, MoodEntry mood) async {
+    if (userId.isEmpty) return;
     await _firestore
         .collection('users')
         .doc(userId)
@@ -153,18 +152,17 @@ class FirestoreService {
         .doc(mood.id)
         .set(mood.toMap());
   }
-  
-  /**
-   * Obtener moods de un mes específico
-   */
+
   Future<List<MoodEntry>> getMoodsForMonth(
     String userId,
     int year,
     int month,
   ) async {
+    if (userId.isEmpty) return [];
+
     final startDate = DateTime(year, month, 1);
     final endDate = DateTime(year, month + 1, 0, 23, 59, 59);
-    
+
     final snapshot = await _firestore
         .collection('users')
         .doc(userId)
@@ -172,14 +170,15 @@ class FirestoreService {
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
         .get();
-    
+
     return snapshot.docs.map((doc) => MoodEntry.fromMap(doc.data())).toList();
   }
-  
-  /**
-   * Obtener todos los moods del usuario
-   */
+
   Stream<List<MoodEntry>> getAllMoods(String userId) {
+    if (userId.isEmpty) {
+      return const Stream.empty();
+    }
+
     return _firestore
         .collection('users')
         .doc(userId)
@@ -190,13 +189,12 @@ class FirestoreService {
       return snapshot.docs.map((doc) => MoodEntry.fromMap(doc.data())).toList();
     });
   }
-  
+
   // ============ JOURNAL (Diario) ============
-  
-  /**
-   * Crear una entrada de diario
-   */
+
   Future<void> createJournalEntry(String userId, JournalEntry entry) async {
+    if (userId.isEmpty) return;
+
     await _firestore
         .collection('users')
         .doc(userId)
@@ -204,11 +202,12 @@ class FirestoreService {
         .doc(entry.id)
         .set(entry.toMap());
   }
-  
-  /**
-   * Obtener todas las entradas del diario
-   */
+
   Stream<List<JournalEntry>> getJournalEntries(String userId) {
+    if (userId.isEmpty) {
+      return const Stream.empty();
+    }
+
     return _firestore
         .collection('users')
         .doc(userId)
@@ -219,11 +218,10 @@ class FirestoreService {
       return snapshot.docs.map((doc) => JournalEntry.fromMap(doc.data())).toList();
     });
   }
-  
-  /**
-   * Actualizar una entrada del diario
-   */
+
   Future<void> updateJournalEntry(String userId, JournalEntry entry) async {
+    if (userId.isEmpty) return;
+
     await _firestore
         .collection('users')
         .doc(userId)
@@ -231,11 +229,10 @@ class FirestoreService {
         .doc(entry.id)
         .update(entry.toMap());
   }
-  
-  /**
-   * Eliminar una entrada del diario
-   */
+
   Future<void> deleteJournalEntry(String userId, String entryId) async {
+    if (userId.isEmpty) return;
+
     await _firestore
         .collection('users')
         .doc(userId)
@@ -243,19 +240,13 @@ class FirestoreService {
         .doc(entryId)
         .delete();
   }
-  
+
   // ============ HELPERS ============
-  
-  /**
-   * Convertir DateTime a string en formato YYYY-MM-DD
-   */
+
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
-  
-  /**
-   * Verificar si dos fechas son el mismo día
-   */
+
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }

@@ -88,8 +88,16 @@ class _DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
-    final userId = authService.currentUser?.uid ?? '';
-    final userName = authService.currentUser?.displayName ?? 'Usuario';
+
+    // ✔️ PROTECCIÓN: si el usuario aún no está cargado o se está cerrando sesión
+    if (authService.currentUser == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final userId = authService.currentUser!.uid;
+    final userName = authService.currentUser!.displayName ?? 'Usuario';
     final firestoreService = FirestoreService();
 
     return Scaffold(
@@ -123,7 +131,7 @@ class _DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Tarjeta de resumen del día
+            // Tarjeta resumen del día
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -157,6 +165,8 @@ class _DashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
+
+                    // ✔️ StreamBuilder seguro (userId garantizado)
                     StreamBuilder<List<Habit>>(
                       stream: firestoreService.getHabits(userId),
                       builder: (context, snapshot) {
@@ -171,7 +181,7 @@ class _DashboardScreen extends StatelessWidget {
                         final dailyHabits = habits.where(
                           (h) => h.frequency == HabitFrequency.daily,
                         ).toList();
-                        
+
                         final today = DateTime.now();
                         final completedToday = dailyHabits.where(
                           (h) => h.isCompletedOnDate(today),
@@ -189,13 +199,12 @@ class _DashboardScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 12),
                             LinearProgressIndicator(
-                              value: dailyHabits.isEmpty 
-                                  ? 0 
+                              value: dailyHabits.isEmpty
+                                  ? 0
                                   : completedToday / dailyHabits.length,
                               backgroundColor: Colors.white30,
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
+                              valueColor:
+                                  const AlwaysStoppedAnimation<Color>(Colors.white),
                               minHeight: 8,
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -314,9 +323,9 @@ class _DashboardScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Text(
+                        const Text(
                           '🔥',
-                          style: const TextStyle(fontSize: 32),
+                          style: TextStyle(fontSize: 32),
                         ),
                       ],
                     ),
@@ -385,7 +394,7 @@ class _DashboardScreen extends StatelessWidget {
 }
 
 /**
- * Widget para las tarjetas de acción rápida
+ * Widget para tarjetas de acción rápida
  */
 class _QuickActionCard extends StatelessWidget {
   final String title;
